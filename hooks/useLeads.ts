@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { LeadDTO, LeadStatus } from "@/types/lead";
 
 interface LeadsResponse {
@@ -32,42 +32,42 @@ export function useLeads(initialFilters: UseLeadsFilters = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState(initialFilters);
+  const filtersRef = useRef(initialFilters);
 
-  const fetchLeads = useCallback(
-    async (override?: UseLeadsFilters) => {
-      setLoading(true);
-      setError(null);
+  const fetchLeads = useCallback(async (override?: UseLeadsFilters) => {
+    setLoading(true);
+    setError(null);
 
-      const current = { ...filters, ...override };
-      const params = new URLSearchParams();
+    const current = { ...filtersRef.current, ...override };
+    filtersRef.current = current;
 
-      if (current.status) params.set("status", current.status);
-      if (current.source) params.set("source", current.source);
-      if (current.minScore) params.set("minScore", String(current.minScore));
-      if (current.search) params.set("search", current.search);
-      params.set("page", String(current.page ?? 1));
+    const params = new URLSearchParams();
 
-      try {
-        const response = await fetch(`/api/leads?${params.toString()}`);
-        const data = (await response.json()) as LeadsResponse & {
-          error?: string;
-        };
+    if (current.status) params.set("status", current.status);
+    if (current.source) params.set("source", current.source);
+    if (current.minScore) params.set("minScore", String(current.minScore));
+    if (current.search) params.set("search", current.search);
+    params.set("page", String(current.page ?? 1));
 
-        if (!response.ok) {
-          throw new Error(data.error ?? "Erro ao carregar leads");
-        }
+    try {
+      const response = await fetch(`/api/leads?${params.toString()}`);
+      const data = (await response.json()) as LeadsResponse & {
+        error?: string;
+      };
 
-        setLeads(data.leads);
-        setPagination(data.pagination);
-        setFilters(current);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Erro desconhecido");
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(data.error ?? "Erro ao carregar leads");
       }
-    },
-    [filters],
-  );
+
+      setLeads(data.leads);
+      setPagination(data.pagination);
+      setFilters(current);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const updateLead = useCallback(
     async (id: string, data: Record<string, unknown>) => {
