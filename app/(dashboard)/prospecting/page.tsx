@@ -45,8 +45,9 @@ export default function ProspectingPage() {
 
       <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
         Motor de busca: consulta PNCP e Google Places e salva os resultados em{" "}
-        <strong>Leads</strong>. A região filtra Google Places e também contratos
-        PNCP pela cidade/UF do órgão contratante.
+        <strong>Leads</strong>. &quot;São Paulo, SP&quot; inclui todo o{" "}
+        <strong>estado</strong> (Campinas, Osasco, capital etc.). Para uma cidade
+        específica, use ex.: &quot;Campinas, SP&quot;.
       </p>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -62,7 +63,7 @@ export default function ProspectingPage() {
                   id="region"
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
-                  placeholder="São Paulo, SP"
+                  placeholder="São Paulo, SP (estado) ou Campinas, SP"
                 />
               </div>
               <div>

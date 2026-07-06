@@ -48,8 +48,8 @@ export default function LeadsPage() {
       <DashboardHeader title="Leads" />
 
       <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
-        CRM com empresas já salvas no banco. Para buscar novas oportunidades no
-        PNCP ou Google Places, use{" "}
+        CRM com empresas já salvas no banco. &quot;São Paulo, SP&quot; = todo o
+        estado. Para buscar novas oportunidades, use{" "}
         <Link href="/prospecting" className="font-medium text-amber-700 hover:underline dark:text-amber-400">
           Prospecção
         </Link>

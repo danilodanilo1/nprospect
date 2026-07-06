@@ -1,6 +1,8 @@
 export interface ParsedRegion {
-  city?: string;
   state?: string;
+  city?: string;
+  /** When false, only the state (UF) is enforced. */
+  requireCity?: boolean;
 }
 
 function normalizeText(text: string): string {
@@ -10,7 +12,11 @@ function normalizeText(text: string): string {
     .toLowerCase();
 }
 
-/** Parses strings like "São Paulo, SP", "SP" or "São Paulo". */
+function isSaoPauloStateAlias(city: string, state: string): boolean {
+  return normalizeText(city) === "sao paulo" && state.toUpperCase() === "SP";
+}
+
+/** Parses strings like "São Paulo, SP", "SP" or "Campinas, SP". */
 export function parseRegion(region?: string): ParsedRegion | null {
   if (!region?.trim()) return null;
 
@@ -18,9 +24,13 @@ export function parseRegion(region?: string): ParsedRegion | null {
   const commaMatch = trimmed.match(/^(.+?)\s*,\s*([A-Za-z]{2})$/);
 
   if (commaMatch) {
+    const city = commaMatch[1].trim();
+    const state = commaMatch[2].toUpperCase();
+
     return {
-      city: commaMatch[1].trim(),
-      state: commaMatch[2].toUpperCase(),
+      city,
+      state,
+      requireCity: !isSaoPauloStateAlias(city, state),
     };
   }
 
@@ -28,7 +38,11 @@ export function parseRegion(region?: string): ParsedRegion | null {
     return { state: trimmed.toUpperCase() };
   }
 
-  return { city: trimmed };
+  if (normalizeText(trimmed) === "sao paulo") {
+    return { state: "SP", city: trimmed, requireCity: false };
+  }
+
+  return { city: trimmed, requireCity: true };
 }
 
 export function matchesRegionLocation(
@@ -45,7 +59,7 @@ export function matchesRegionLocation(
     }
   }
 
-  if (parsed.city) {
+  if (parsed.city && parsed.requireCity !== false) {
     if (!city || !normalizeText(city).includes(normalizeText(parsed.city))) {
       return false;
     }
@@ -59,17 +73,41 @@ export function matchesRegionAddress(
   region?: string,
 ): boolean {
   const parsed = parseRegion(region);
-  if (!parsed || !address) return !parsed;
+  if (!parsed) return true;
+  if (!address) return false;
 
   const normalizedAddress = normalizeText(address);
 
-  if (parsed.state && !normalizedAddress.includes(normalizeText(parsed.state))) {
-    return false;
+  if (parsed.state) {
+    const stateToken = normalizeText(parsed.state);
+    const hasState =
+      normalizedAddress.endsWith(`- ${stateToken}`) ||
+      normalizedAddress.includes(` ${stateToken}`) ||
+      normalizedAddress.includes(`- ${stateToken}`);
+
+    if (!hasState) return false;
   }
 
-  if (parsed.city && !normalizedAddress.includes(normalizeText(parsed.city))) {
-    return false;
+  if (parsed.city && parsed.requireCity !== false) {
+    if (!normalizedAddress.includes(normalizeText(parsed.city))) {
+      return false;
+    }
   }
 
   return true;
+}
+
+export function getRegionLabel(region?: string): string {
+  const parsed = parseRegion(region);
+  if (!parsed) return "Brasil";
+
+  if (parsed.state && parsed.requireCity === false) {
+    return parsed.state === "SP" ? "Estado de São Paulo" : parsed.state;
+  }
+
+  if (parsed.city && parsed.state) {
+    return `${parsed.city}, ${parsed.state}`;
+  }
+
+  return parsed.city ?? parsed.state ?? region ?? "Brasil";
 }

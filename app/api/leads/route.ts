@@ -46,13 +46,13 @@ export async function GET(request: Request) {
       if (parsedRegion.state) {
         regionClauses.push({
           "contacts.address": {
-            $regex: parsedRegion.state,
+            $regex: `- ${parsedRegion.state}$|${parsedRegion.state}`,
             $options: "i",
           },
         });
       }
 
-      if (parsedRegion.city) {
+      if (parsedRegion.city && parsedRegion.requireCity !== false) {
         regionClauses.push({
           "contacts.address": {
             $regex: parsedRegion.city,
