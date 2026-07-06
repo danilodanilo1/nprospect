@@ -47,10 +47,21 @@ const DEFAULT_KEYWORDS = [
   "edific",
 ];
 
+const MAX_SCAN_PAGES = 40;
+const PARALLEL_PAGE_BATCH = 5;
+const TARGET_LEADS = 50;
+
 function getBaseUrl(): string {
   return (
     process.env.PNCP_BASE_URL ?? "https://pncp.gov.br/api/consulta"
   ).replace(/\/$/, "");
+}
+
+function normalizeText(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 }
 
 function formatDate(date: Date): string {
@@ -78,19 +89,41 @@ function resolveDateRange(params: PncpSearchParams): {
   };
 }
 
+function collectSearchTerms(
+  keywords: string[],
+  objectFilter?: string,
+): string[] {
+  const terms = new Set<string>();
+
+  if (objectFilter?.trim()) {
+    for (const term of objectFilter.split(/[\s,;]+/)) {
+      const normalized = normalizeText(term.trim());
+      if (normalized.length >= 3) terms.add(normalized);
+    }
+  }
+
+  for (const keyword of keywords) {
+    const normalized = normalizeText(keyword.trim());
+    if (normalized.length >= 3) terms.add(normalized);
+  }
+
+  if (terms.size === 0) {
+    for (const keyword of DEFAULT_KEYWORDS) {
+      terms.add(normalizeText(keyword));
+    }
+  }
+
+  return [...terms];
+}
+
 function matchesKeywords(
   text: string,
   keywords: string[],
   objectFilter?: string,
 ): boolean {
-  const lower = text.toLowerCase();
-
-  if (objectFilter?.trim()) {
-    return lower.includes(objectFilter.trim().toLowerCase());
-  }
-
-  const terms = keywords.length > 0 ? keywords : DEFAULT_KEYWORDS;
-  return terms.some((term) => lower.includes(term.toLowerCase()));
+  const normalizedText = normalizeText(text);
+  const terms = collectSearchTerms(keywords, objectFilter);
+  return terms.some((term) => normalizedText.includes(term));
 }
 
 function mapPncpItemToLead(item: PncpContractItem): IngestionLeadPayload | null {
@@ -181,22 +214,45 @@ export async function searchPncpContracts(
 
 export async function searchPncpAllPages(
   params: PncpSearchParams,
-  maxPages = 5,
+  maxPages = MAX_SCAN_PAGES,
 ): Promise<IngestionLeadPayload[]> {
   const allLeads: IngestionLeadPayload[] = [];
+  const seenKeys = new Set<string>();
   let totalPaginas = 1;
 
-  for (let page = 1; page <= maxPages && page <= totalPaginas; page += 1) {
-    const { leads, totalPaginas: apiTotalPages } = await searchPncpContracts({
-      ...params,
-      page,
-    });
+  for (
+    let batchStart = 1;
+    batchStart <= maxPages && batchStart <= totalPaginas;
+    batchStart += PARALLEL_PAGE_BATCH
+  ) {
+    const batchEnd = Math.min(
+      batchStart + PARALLEL_PAGE_BATCH - 1,
+      maxPages,
+      totalPaginas,
+    );
+    const pages = Array.from(
+      { length: batchEnd - batchStart + 1 },
+      (_, index) => batchStart + index,
+    );
 
-    if (page === 1) {
-      totalPaginas = apiTotalPages;
+    const results = await Promise.all(
+      pages.map((page) => searchPncpContracts({ ...params, page })),
+    );
+
+    if (batchStart === 1) {
+      totalPaginas = results[0]?.totalPaginas ?? 0;
     }
 
-    allLeads.push(...leads);
+    for (const result of results) {
+      for (const lead of result.leads) {
+        const key = lead.cnpj ?? lead.name.toLowerCase();
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        allLeads.push(lead);
+      }
+    }
+
+    if (allLeads.length >= TARGET_LEADS) break;
   }
 
   return allLeads;
