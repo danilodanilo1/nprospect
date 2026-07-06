@@ -12,7 +12,7 @@ export default function ProspectingPage() {
   const { jobs, loading, searching, error, lastJob, fetchJobs, startSearch } =
     useProspecting();
 
-  const [region, setRegion] = useState("");
+  const [region, setRegion] = useState("São Paulo, SP");
   const [keywords, setKeywords] = useState("construtora, obra, engenharia");
   const [pncpObject, setPncpObject] = useState("material construção");
   const [radiusKm, setRadiusKm] = useState("25");
@@ -42,6 +42,12 @@ export default function ProspectingPage() {
   return (
     <div>
       <DashboardHeader title="Prospecção" />
+
+      <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
+        Motor de busca: consulta PNCP e Google Places e salva os resultados em{" "}
+        <strong>Leads</strong>. A região filtra Google Places e também contratos
+        PNCP pela cidade/UF do órgão contratante.
+      </p>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

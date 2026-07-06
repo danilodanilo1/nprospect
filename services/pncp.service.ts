@@ -1,9 +1,11 @@
 import { logActivity } from "@/services/activity-log.service";
+import { matchesRegionLocation } from "@/lib/region";
 import type { IngestionLeadPayload } from "@/types/ingestion";
 
 export interface PncpSearchParams {
   keywords?: string[];
   object?: string;
+  region?: string;
   page?: number;
   pageSize?: number;
   /** Formato YYYYMMDD */
@@ -48,6 +50,7 @@ const DEFAULT_KEYWORDS = [
 ];
 
 const MAX_SCAN_PAGES = 40;
+const MAX_SCAN_PAGES_WITH_REGION = 80;
 const PARALLEL_PAGE_BATCH = 5;
 const TARGET_LEADS = 50;
 
@@ -196,6 +199,13 @@ export async function searchPncpContracts(
       .filter((item) =>
         matchesKeywords(item.objetoContrato ?? "", keywords, params.object),
       )
+      .filter((item) =>
+        matchesRegionLocation(
+          item.unidadeOrgao?.municipioNome,
+          item.unidadeOrgao?.ufSigla,
+          params.region,
+        ),
+      )
       .map(mapPncpItemToLead)
       .filter((lead): lead is IngestionLeadPayload => lead !== null);
 
@@ -214,7 +224,7 @@ export async function searchPncpContracts(
 
 export async function searchPncpAllPages(
   params: PncpSearchParams,
-  maxPages = MAX_SCAN_PAGES,
+  maxPages = params.region ? MAX_SCAN_PAGES_WITH_REGION : MAX_SCAN_PAGES,
 ): Promise<IngestionLeadPayload[]> {
   const allLeads: IngestionLeadPayload[] = [];
   const seenKeys = new Set<string>();

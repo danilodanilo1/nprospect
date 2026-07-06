@@ -13,9 +13,12 @@ import { LEAD_SOURCE_LABELS, type LeadStatus } from "@/types/lead";
 import { formatCnpj } from "@/lib/utils";
 
 export default function LeadsPage() {
-  const { leads, loading, error, fetchLeads, createLead } = useLeads();
+  const { leads, loading, error, fetchLeads, createLead } = useLeads({
+    region: "São Paulo, SP",
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
+  const [regionFilter, setRegionFilter] = useState("São Paulo, SP");
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState("");
   const [formCnpj, setFormCnpj] = useState("");
@@ -28,6 +31,7 @@ export default function LeadsPage() {
     await fetchLeads({
       search: search || undefined,
       status: statusFilter || undefined,
+      region: regionFilter || undefined,
     });
   }
 
@@ -43,8 +47,17 @@ export default function LeadsPage() {
     <div>
       <DashboardHeader title="Leads" />
 
+      <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
+        CRM com empresas já salvas no banco. Para buscar novas oportunidades no
+        PNCP ou Google Places, use{" "}
+        <Link href="/prospecting" className="font-medium text-amber-700 hover:underline dark:text-amber-400">
+          Prospecção
+        </Link>
+        .
+      </p>
+
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="grid flex-1 gap-3 sm:grid-cols-3">
+        <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <Label htmlFor="search">Buscar</Label>
             <Input
@@ -71,6 +84,15 @@ export default function LeadsPage() {
               <option value="WON">Ganho</option>
               <option value="LOST">Perdido</option>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="region">Região</Label>
+            <Input
+              id="region"
+              placeholder="São Paulo, SP"
+              value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value)}
+            />
           </div>
           <div className="flex items-end">
             <Button onClick={handleSearch} className="w-full">
@@ -124,6 +146,7 @@ export default function LeadsPage() {
           <thead className="bg-slate-50 dark:bg-slate-900">
             <tr>
               <th className="px-4 py-3 font-medium">Empresa</th>
+              <th className="px-4 py-3 font-medium">Local</th>
               <th className="px-4 py-3 font-medium">CNPJ</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Score</th>
@@ -143,6 +166,9 @@ export default function LeadsPage() {
                   >
                     {lead.name}
                   </Link>
+                </td>
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                  {lead.contacts.address || "—"}
                 </td>
                 <td className="px-4 py-3">{formatCnpj(lead.cnpj)}</td>
                 <td className="px-4 py-3">
@@ -171,8 +197,9 @@ export default function LeadsPage() {
                 {lead.name}
               </Link>
               <p className="mt-1 text-sm text-slate-500">
-                {formatCnpj(lead.cnpj)}
+                {lead.contacts.address || "Local não informado"}
               </p>
+              <p className="text-sm text-slate-500">{formatCnpj(lead.cnpj)}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <StatusBadge status={lead.status} />
                 <ScoreBadge score={lead.score} />

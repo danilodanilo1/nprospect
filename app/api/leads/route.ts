@@ -5,6 +5,7 @@ import Lead from "@/models/Lead";
 import { mapLeadToDTO } from "@/lib/lead-mapper";
 import { leadCreateSchema } from "@/lib/validators";
 import { normalizeCnpj } from "@/lib/utils";
+import { parseRegion } from "@/lib/region";
 import { calculateLeadScore } from "@/services/scoring.service";
 import type { LeadSource } from "@/types/lead";
 
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
     const source = searchParams.get("source");
     const minScore = searchParams.get("minScore");
     const search = searchParams.get("search");
+    const region = searchParams.get("region");
     const page = Number(searchParams.get("page") ?? "1");
     const limit = Number(searchParams.get("limit") ?? "20");
 
@@ -35,6 +37,33 @@ export async function GET(request: Request) {
         { name: { $regex: search, $options: "i" } },
         { cnpj: { $regex: search.replace(/\D/g, ""), $options: "i" } },
       ];
+    }
+
+    const parsedRegion = parseRegion(region ?? undefined);
+    if (parsedRegion) {
+      const regionClauses: Record<string, unknown>[] = [];
+
+      if (parsedRegion.state) {
+        regionClauses.push({
+          "contacts.address": {
+            $regex: parsedRegion.state,
+            $options: "i",
+          },
+        });
+      }
+
+      if (parsedRegion.city) {
+        regionClauses.push({
+          "contacts.address": {
+            $regex: parsedRegion.city,
+            $options: "i",
+          },
+        });
+      }
+
+      if (regionClauses.length > 0) {
+        filter.$and = [...((filter.$and as unknown[]) ?? []), ...regionClauses];
+      }
     }
 
     const skip = (page - 1) * limit;

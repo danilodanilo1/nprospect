@@ -18,6 +18,7 @@ interface UseLeadsFilters {
   source?: string;
   minScore?: number;
   search?: string;
+  region?: string;
   page?: number;
 }
 
@@ -47,6 +48,7 @@ export function useLeads(initialFilters: UseLeadsFilters = {}) {
     if (current.source) params.set("source", current.source);
     if (current.minScore) params.set("minScore", String(current.minScore));
     if (current.search) params.set("search", current.search);
+    if (current.region) params.set("region", current.region);
     params.set("page", String(current.page ?? 1));
 
     try {
