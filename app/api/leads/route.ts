@@ -24,14 +24,16 @@ export async function GET(request: Request) {
     const minScore = searchParams.get("minScore");
     const search = searchParams.get("search");
     const region = searchParams.get("region");
+    const jobId = searchParams.get("jobId");
     const page = Number(searchParams.get("page") ?? "1");
-    const limit = Number(searchParams.get("limit") ?? "20");
+    const limit = Math.min(Number(searchParams.get("limit") ?? "20"), 100);
 
     const filter: Record<string, unknown> = {};
 
     if (status) filter.status = status;
     if (source) filter.sources = source;
     if (minScore) filter.score = { $gte: Number(minScore) };
+    if (jobId) filter.prospectingJobs = jobId;
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },

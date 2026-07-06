@@ -9,30 +9,51 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScoreBadge, StatusBadge } from "@/components/ui/badge";
-import { LEAD_SOURCE_LABELS, type LeadStatus } from "@/types/lead";
+import {
+  LEAD_SOURCE_LABELS,
+  type LeadSource,
+  type LeadStatus,
+} from "@/types/lead";
 import { formatCnpj } from "@/lib/utils";
 
 export default function LeadsPage() {
-  const { leads, loading, error, fetchLeads, createLead } = useLeads({
+  const { leads, pagination, loading, error, fetchLeads, createLead } = useLeads({
     region: "São Paulo, SP",
+    limit: 20,
   });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
+  const [sourceFilter, setSourceFilter] = useState<LeadSource | "">("");
   const [regionFilter, setRegionFilter] = useState("São Paulo, SP");
+  const [minScore, setMinScore] = useState("");
+  const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState("");
   const [formCnpj, setFormCnpj] = useState("");
 
   useEffect(() => {
-    fetchLeads();
+    fetchLeads({ page: 1, limit: 20 }).then();
   }, [fetchLeads]);
 
-  async function handleSearch() {
+  async function loadPage(nextPage: number) {
     await fetchLeads({
       search: search || undefined,
       status: statusFilter || undefined,
+      source: sourceFilter || undefined,
       region: regionFilter || undefined,
+      minScore: minScore ? Number(minScore) : undefined,
+      page: nextPage,
+      limit: 20,
     });
+    setPage(nextPage);
+  }
+
+  async function handleSearch() {
+    await loadPage(1);
+  }
+
+  async function handlePage(nextPage: number) {
+    await loadPage(nextPage);
   }
 
   async function handleCreate(event: React.FormEvent) {
@@ -57,7 +78,7 @@ export default function LeadsPage() {
       </p>
 
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <div>
             <Label htmlFor="search">Buscar</Label>
             <Input
@@ -86,12 +107,38 @@ export default function LeadsPage() {
             </Select>
           </div>
           <div>
+            <Label htmlFor="source">Fonte</Label>
+            <Select
+              id="source"
+              value={sourceFilter}
+              onChange={(e) =>
+                setSourceFilter(e.target.value as LeadSource | "")
+              }
+            >
+              <option value="">Todas</option>
+              <option value="GOOGLE_PLACES">Google Places</option>
+              <option value="PNCP_BID">PNCP</option>
+              <option value="SCRAPER">Scraper</option>
+            </Select>
+          </div>
+          <div>
             <Label htmlFor="region">Região</Label>
             <Input
               id="region"
               placeholder="São Paulo, SP"
               value={regionFilter}
               onChange={(e) => setRegionFilter(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="minScore">Score mínimo</Label>
+            <Input
+              id="minScore"
+              type="number"
+              min={0}
+              value={minScore}
+              onChange={(e) => setMinScore(e.target.value)}
+              placeholder="30"
             />
           </div>
           <div className="flex items-end">
@@ -151,6 +198,7 @@ export default function LeadsPage() {
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Score</th>
               <th className="px-4 py-3 font-medium">Fontes</th>
+              <th className="px-4 py-3 font-medium">Atualizado</th>
             </tr>
           </thead>
           <tbody>
@@ -179,6 +227,9 @@ export default function LeadsPage() {
                 </td>
                 <td className="px-4 py-3">
                   {lead.sources.map((s) => LEAD_SOURCE_LABELS[s]).join(", ")}
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                  {new Date(lead.updatedAt).toLocaleString("pt-BR")}
                 </td>
               </tr>
             ))}
@@ -214,6 +265,31 @@ export default function LeadsPage() {
           Nenhum lead encontrado. Crie um manualmente ou inicie uma prospecção.
         </p>
       )}
+
+      <div className="mt-6 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-slate-500">
+          Página {pagination.page || page} de {Math.max(pagination.pages, 1)} •{" "}
+          {pagination.total} leads
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => handlePage(page - 1)}
+          >
+            Anterior
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pagination.pages > 0 && page >= pagination.pages}
+            onClick={() => handlePage(page + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

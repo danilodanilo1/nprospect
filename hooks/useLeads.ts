@@ -19,7 +19,9 @@ interface UseLeadsFilters {
   minScore?: number;
   search?: string;
   region?: string;
+  jobId?: string;
   page?: number;
+  limit?: number;
 }
 
 export function useLeads(initialFilters: UseLeadsFilters = {}) {
@@ -49,7 +51,9 @@ export function useLeads(initialFilters: UseLeadsFilters = {}) {
     if (current.minScore) params.set("minScore", String(current.minScore));
     if (current.search) params.set("search", current.search);
     if (current.region) params.set("region", current.region);
+    if (current.jobId) params.set("jobId", current.jobId);
     params.set("page", String(current.page ?? 1));
+    params.set("limit", String(current.limit ?? 20));
 
     try {
       const response = await fetch(`/api/leads?${params.toString()}`);

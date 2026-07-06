@@ -11,6 +11,8 @@ const googleMetadataSchema = z.object({
   rating: z.number().optional(),
   reviews: z.number().optional(),
   types: z.array(z.string()).optional(),
+  mapsUrl: z.string().url().optional(),
+  businessStatus: z.string().optional(),
 });
 
 const pncpMetadataSchema = z.object({
@@ -19,6 +21,11 @@ const pncpMetadataSchema = z.object({
   object: z.string().optional(),
   date: z.string().optional(),
   modality: z.string().optional(),
+  buyerName: z.string().optional(),
+  buyerCity: z.string().optional(),
+  buyerState: z.string().optional(),
+  publicationDate: z.string().optional(),
+  contractNumber: z.string().optional(),
 });
 
 const leadMetadataSchema = z.object({
@@ -37,6 +44,7 @@ export const ingestionLeadSchema = z.object({
   source: z.enum(["GOOGLE_PLACES", "PNCP_BID", "SCRAPER"]),
   placeId: z.string().optional(),
   metadata: leadMetadataSchema.optional(),
+  prospectingJobId: z.string().optional(),
 });
 
 export const leadsIngestionSchema = z.object({
@@ -76,5 +84,8 @@ export const prospectingSearchSchema = z.object({
   radiusKm: z.number().min(1).max(100).optional(),
   keywords: z.array(z.string()).optional(),
   pncpObject: z.string().optional(),
+  dateFrom: z.string().regex(/^\d{8}$/).optional(),
+  dateTo: z.string().regex(/^\d{8}$/).optional(),
+  minValue: z.number().min(0).optional(),
   sources: z.array(z.enum(["GOOGLE_PLACES", "PNCP_BID"])).optional(),
 });

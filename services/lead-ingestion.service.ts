@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Lead, { type ILead } from "@/models/Lead";
 import ProspectingJob from "@/models/ProspectingJob";
 import { connectDB } from "@/lib/db";
@@ -71,6 +72,9 @@ export async function upsertLeadFromIngestion(
 
   const normalizedCnpj = normalizeCnpj(payload.cnpj);
   const existing = await findExistingLead(payload);
+  const jobObjectId = payload.prospectingJobId
+    ? new mongoose.Types.ObjectId(payload.prospectingJobId)
+    : undefined;
 
   if (existing) {
     existing.name = payload.name || existing.name;
@@ -82,6 +86,18 @@ export async function upsertLeadFromIngestion(
     existing.placeId = payload.placeId ?? existing.placeId;
     existing.sources = mergeSources(existing.sources, payload.source);
     existing.metadata = mergeMetadata(existing.metadata, payload.metadata);
+    if (jobObjectId) {
+      existing.lastProspectingJobId = jobObjectId;
+      const prospectingJobs = existing.prospectingJobs ?? [];
+      if (!existing.prospectingJobs) existing.prospectingJobs = prospectingJobs;
+      if (
+        !prospectingJobs.some(
+          (existingJobId) => existingJobId.toString() === jobObjectId.toString(),
+        )
+      ) {
+        existing.prospectingJobs.push(jobObjectId);
+      }
+    }
     existing.score = calculateLeadScore({
       sources: existing.sources,
       cnpj: existing.cnpj,
@@ -105,6 +121,8 @@ export async function upsertLeadFromIngestion(
     sources,
     placeId: payload.placeId,
     metadata,
+    prospectingJobs: jobObjectId ? [jobObjectId] : [],
+    lastProspectingJobId: jobObjectId,
     score: calculateLeadScore({
       sources,
       cnpj: normalizedCnpj,
@@ -127,7 +145,10 @@ export async function ingestLeadsBatch(
 
   for (const payload of leads) {
     try {
-      const result = await upsertLeadFromIngestion(payload);
+      const result = await upsertLeadFromIngestion({
+        ...payload,
+        prospectingJobId: payload.prospectingJobId ?? jobId,
+      });
       if (result.created) created += 1;
       else updated += 1;
     } catch (error) {

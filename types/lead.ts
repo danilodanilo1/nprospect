@@ -19,6 +19,8 @@ export interface GoogleMetadata {
   rating?: number;
   reviews?: number;
   types?: string[];
+  mapsUrl?: string;
+  businessStatus?: string;
 }
 
 export interface PncpMetadata {
@@ -27,6 +29,11 @@ export interface PncpMetadata {
   object?: string;
   date?: string;
   modality?: string;
+  buyerName?: string;
+  buyerCity?: string;
+  buyerState?: string;
+  publicationDate?: string;
+  contractNumber?: string;
 }
 
 export interface LeadMetadata {
@@ -57,6 +64,8 @@ export interface LeadDTO {
   metadata: LeadMetadata;
   notes: LeadNote[];
   assignedTo?: string;
+  prospectingJobs?: string[];
+  lastProspectingJobId?: string;
   lastActivityAt: string;
   createdAt: string;
   updatedAt: string;

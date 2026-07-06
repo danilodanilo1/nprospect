@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Button } from "@/components/ui/button";
@@ -118,7 +118,7 @@ export default function LeadDetailPage() {
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Contatos</CardTitle>
+              <CardTitle>Contatos e dados comerciais</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -135,7 +135,18 @@ export default function LeadDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-slate-500">Website</p>
-                <p className="font-medium">{lead.contacts.website ?? "—"}</p>
+                {lead.contacts.website ? (
+                  <a
+                    href={lead.contacts.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-amber-700 hover:underline"
+                  >
+                    Abrir site <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  <p className="font-medium">—</p>
+                )}
               </div>
               <div className="sm:col-span-2">
                 <p className="text-xs text-slate-500">Endereço</p>
@@ -147,11 +158,11 @@ export default function LeadDetailPage() {
           {(lead.metadata.google || lead.metadata.pncp || lead.metadata.scraper) && (
             <Card>
               <CardHeader>
-                <CardTitle>Metadata por Fonte</CardTitle>
+                <CardTitle>Dados por fonte de prospecção</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 text-sm">
+              <CardContent className="grid gap-4 text-sm lg:grid-cols-2">
                 {lead.metadata.google && (
-                  <div>
+                  <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
                     <p className="font-medium text-amber-700 dark:text-amber-400">
                       Google Places
                     </p>
@@ -159,20 +170,50 @@ export default function LeadDetailPage() {
                       Avaliação: {lead.metadata.google.rating ?? "—"} (
                       {lead.metadata.google.reviews ?? 0} reviews)
                     </p>
+                    <p>
+                      Status Google:{" "}
+                      {lead.metadata.google.businessStatus ?? "não informado"}
+                    </p>
+                    <p>
+                      Categorias:{" "}
+                      {lead.metadata.google.types?.join(", ") ?? "não informado"}
+                    </p>
+                    {lead.metadata.google.mapsUrl && (
+                      <a
+                        href={lead.metadata.google.mapsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-amber-700 hover:underline"
+                      >
+                        Abrir no Google Maps <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </div>
                 )}
                 {lead.metadata.pncp && (
-                  <div>
+                  <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
                     <p className="font-medium text-amber-700 dark:text-amber-400">
                       PNCP
                     </p>
+                    <p>
+                      Órgão: {lead.metadata.pncp.buyerName ?? "não informado"}
+                    </p>
+                    <p>
+                      Local do órgão: {lead.metadata.pncp.buyerCity ?? "—"} -{" "}
+                      {lead.metadata.pncp.buyerState ?? "—"}
+                    </p>
                     <p>Objeto: {lead.metadata.pncp.object ?? "—"}</p>
                     <p>Valor: {formatCurrency(lead.metadata.pncp.value)}</p>
-                    <p>ID: {lead.metadata.pncp.bidId ?? "—"}</p>
+                    <p>Data assinatura: {lead.metadata.pncp.date ?? "—"}</p>
+                    <p>
+                      Publicação: {lead.metadata.pncp.publicationDate ?? "—"}
+                    </p>
+                    <p>Contrato: {lead.metadata.pncp.contractNumber ?? "—"}</p>
+                    <p>ID PNCP: {lead.metadata.pncp.bidId ?? "—"}</p>
                   </div>
                 )}
                 {lead.metadata.scraper && (
-                  <div>
+                  <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800 lg:col-span-2">
                     <p className="font-medium text-amber-700 dark:text-amber-400">
                       Scraper
                     </p>
@@ -181,6 +222,26 @@ export default function LeadDetailPage() {
                     </pre>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {(lead.prospectingJobs?.length || lead.lastProspectingJobId) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico de prospecção</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p>
+                  Última busca:{" "}
+                  <span className="font-mono text-xs">
+                    {lead.lastProspectingJobId ?? "—"}
+                  </span>
+                </p>
+                <p>
+                  Total de buscas em que apareceu:{" "}
+                  {lead.prospectingJobs?.length ?? 0}
+                </p>
               </CardContent>
             </Card>
           )}

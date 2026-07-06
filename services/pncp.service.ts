@@ -12,6 +12,7 @@ export interface PncpSearchParams {
   dateFrom?: string;
   /** Formato YYYYMMDD */
   dateTo?: string;
+  minValue?: number;
 }
 
 interface PncpContractItem {
@@ -23,7 +24,9 @@ interface PncpContractItem {
   valorInicial?: number;
   objetoContrato?: string;
   dataAssinatura?: string;
+  dataPublicacaoPncp?: string;
   numeroControlePncpCompra?: string;
+  numeroContratoEmpenho?: string;
   tipoContrato?: { nome?: string };
 }
 
@@ -155,6 +158,11 @@ function mapPncpItemToLead(item: PncpContractItem): IngestionLeadPayload | null 
         object: item.objetoContrato,
         date: item.dataAssinatura,
         modality: item.tipoContrato?.nome,
+        buyerName: item.orgaoEntidade?.razaoSocial,
+        buyerCity: item.unidadeOrgao?.municipioNome,
+        buyerState: item.unidadeOrgao?.ufSigla,
+        publicationDate: item.dataPublicacaoPncp,
+        contractNumber: item.numeroContratoEmpenho,
       },
     },
   };
@@ -196,6 +204,10 @@ export async function searchPncpContracts(
     const items = data.data ?? [];
 
     const leads = items
+      .filter((item) => {
+        const value = item.valorGlobal ?? item.valorInicial ?? 0;
+        return params.minValue === undefined || value >= params.minValue;
+      })
       .filter((item) =>
         matchesKeywords(item.objetoContrato ?? "", keywords, params.object),
       )

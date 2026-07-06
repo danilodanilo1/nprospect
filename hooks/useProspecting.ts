@@ -3,6 +3,8 @@
 import { useCallback, useState } from "react";
 import type { ProspectingJobDTO, ProspectingFilters } from "@/types/prospecting";
 
+type ProspectingSource = NonNullable<ProspectingFilters["sources"]>[number];
+
 export function useProspecting() {
   const [jobs, setJobs] = useState<ProspectingJobDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -15,12 +17,16 @@ export function useProspecting() {
     ingestion?: { created: number; updated: number; errors: number };
   } | null>(null);
 
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = useCallback(async (source?: ProspectingSource) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/prospecting/jobs");
+      const params = new URLSearchParams();
+      if (source) params.set("source", source);
+      const response = await fetch(
+        `/api/prospecting/jobs${params.toString() ? `?${params.toString()}` : ""}`,
+      );
       const data = (await response.json()) as {
         jobs: ProspectingJobDTO[];
         error?: string;

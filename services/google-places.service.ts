@@ -62,6 +62,7 @@ export async function searchGooglePlaces(
             rating: place.rating,
             reviews: place.user_ratings_total,
             types: place.types,
+            businessStatus: place.business_status,
           },
         },
       };
@@ -74,10 +75,12 @@ export async function searchGooglePlaces(
             language: Language.pt_BR,
             fields: [
               "formatted_phone_number",
+              "international_phone_number",
               "website",
               "url",
               "rating",
               "user_ratings_total",
+              "business_status",
             ],
           },
         });
@@ -87,7 +90,7 @@ export async function searchGooglePlaces(
           ...details,
           contacts: {
             ...details.contacts,
-            phone: detail.formatted_phone_number,
+            phone: detail.formatted_phone_number ?? detail.international_phone_number,
             website: detail.website,
           },
           metadata: {
@@ -95,6 +98,8 @@ export async function searchGooglePlaces(
               rating: detail.rating ?? place.rating,
               reviews: detail.user_ratings_total ?? place.user_ratings_total,
               types: place.types,
+              mapsUrl: detail.url,
+              businessStatus: detail.business_status ?? place.business_status,
             },
           },
         };
