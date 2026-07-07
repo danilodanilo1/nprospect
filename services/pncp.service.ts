@@ -1,5 +1,9 @@
 import { logActivity } from "@/services/activity-log.service";
 import { matchesRegionLocation } from "@/lib/region";
+import {
+  classifyOpportunityText,
+  type OpportunityTextClassification,
+} from "@/services/opportunity-rules.service";
 import type { IngestionLeadPayload } from "@/types/ingestion";
 
 export interface PncpSearchParams {
@@ -41,21 +45,16 @@ interface PncpSearchResponse {
 interface PncpPageResult {
   leads: IngestionLeadPayload[];
   totalPaginas: number;
+  discarded: number;
 }
 
-const DEFAULT_KEYWORDS = [
-  "constru",
-  "obra",
-  "material",
-  "engenharia",
-  "reforma",
-  "edific",
-];
+const DEFAULT_KEYWORDS = ["obra", "reforma", "construção", "engenharia"];
 
 const MAX_SCAN_PAGES = 40;
 const MAX_SCAN_PAGES_WITH_REGION = 80;
 const PARALLEL_PAGE_BATCH = 5;
 const TARGET_LEADS = 50;
+const DEFAULT_MIN_VALUE = 50_000;
 
 function getBaseUrl(): string {
   return (
@@ -122,17 +121,63 @@ function collectSearchTerms(
   return [...terms];
 }
 
-function matchesKeywords(
-  text: string,
-  keywords: string[],
-  objectFilter?: string,
-): boolean {
+function matchesKeywords(text: string, keywords: string[], objectFilter?: string): boolean {
   const normalizedText = normalizeText(text);
   const terms = collectSearchTerms(keywords, objectFilter);
   return terms.some((term) => normalizedText.includes(term));
 }
 
-function mapPncpItemToLead(item: PncpContractItem): IngestionLeadPayload | null {
+function shouldAcceptPncpItem(
+  item: PncpContractItem,
+  params: PncpSearchParams,
+): {
+  accepted: boolean;
+  classification: OpportunityTextClassification;
+  value: number;
+  rejectionReason?: string;
+} {
+  const objectText = item.objetoContrato ?? "";
+  const classification = classifyOpportunityText(objectText);
+  const value = item.valorGlobal ?? item.valorInicial ?? 0;
+  const minValue = params.minValue ?? DEFAULT_MIN_VALUE;
+
+  if (classification.category === "NOISE") {
+    return {
+      accepted: false,
+      classification,
+      value,
+      rejectionReason: "Objeto contém termos negativos fora de obras",
+    };
+  }
+
+  if (value < minValue) {
+    return {
+      accepted: false,
+      classification,
+      value,
+      rejectionReason: `Valor abaixo do mínimo de R$ ${minValue}`,
+    };
+  }
+
+  if (
+    classification.category !== "CONSTRUCTION" &&
+    classification.category !== "MATERIALS"
+  ) {
+    return {
+      accepted: false,
+      classification,
+      value,
+      rejectionReason: "Objeto sem intenção clara de obra ou material de construção",
+    };
+  }
+
+  return { accepted: true, classification, value };
+}
+
+function mapPncpItemToLead(
+  item: PncpContractItem,
+  classification: OpportunityTextClassification,
+): IngestionLeadPayload | null {
   const name =
     item.nomeRazaoSocialFornecedor?.trim() ||
     item.orgaoEntidade?.razaoSocial?.trim();
@@ -163,6 +208,17 @@ function mapPncpItemToLead(item: PncpContractItem): IngestionLeadPayload | null 
         buyerState: item.unidadeOrgao?.ufSigla,
         publicationDate: item.dataPublicacaoPncp,
         contractNumber: item.numeroContratoEmpenho,
+      },
+      opportunity: {
+        score: classification.confidence,
+        temperature: "COLD",
+        category: classification.category,
+        confidence: classification.confidence,
+        reasons: [],
+        penalties: [],
+        matchedPositiveTerms: classification.matchedPositiveTerms,
+        matchedNegativeTerms: classification.matchedNegativeTerms,
+        estimatedDemand: classification.estimatedDemand,
       },
     },
   };
@@ -197,17 +253,14 @@ export async function searchPncpContracts(
         status: response.status,
         url,
       });
-      return { leads: [], totalPaginas: 0 };
+      return { leads: [], totalPaginas: 0, discarded: 0 };
     }
 
     const data = (await response.json()) as PncpSearchResponse;
     const items = data.data ?? [];
+    let discarded = 0;
 
     const leads = items
-      .filter((item) => {
-        const value = item.valorGlobal ?? item.valorInicial ?? 0;
-        return params.minValue === undefined || value >= params.minValue;
-      })
       .filter((item) =>
         matchesKeywords(item.objetoContrato ?? "", keywords, params.object),
       )
@@ -218,19 +271,36 @@ export async function searchPncpContracts(
           params.region,
         ),
       )
-      .map(mapPncpItemToLead)
+      .map((item) => {
+        const result = shouldAcceptPncpItem(item, params);
+        if (!result.accepted) {
+          discarded += 1;
+          return null;
+        }
+        return mapPncpItemToLead(item, result.classification);
+      })
       .filter((lead): lead is IngestionLeadPayload => lead !== null);
+
+    if (discarded > 0 || leads.length > 0) {
+      await logActivity("info", "pncp", "PNCP classificados por oportunidade", {
+        page,
+        accepted: leads.length,
+        discarded,
+        minValue: params.minValue ?? DEFAULT_MIN_VALUE,
+      });
+    }
 
     return {
       leads,
       totalPaginas: data.totalPaginas ?? 0,
+      discarded,
     };
   } catch (error) {
     await logActivity("error", "pncp", "Falha ao consultar PNCP", {
       error: error instanceof Error ? error.message : "Unknown error",
       url,
     });
-    return { leads: [], totalPaginas: 0 };
+    return { leads: [], totalPaginas: 0, discarded: 0 };
   }
 }
 
@@ -241,6 +311,7 @@ export async function searchPncpAllPages(
   const allLeads: IngestionLeadPayload[] = [];
   const seenKeys = new Set<string>();
   let totalPaginas = 1;
+  let discarded = 0;
 
   for (
     let batchStart = 1;
@@ -266,6 +337,7 @@ export async function searchPncpAllPages(
     }
 
     for (const result of results) {
+      discarded += result.discarded;
       for (const lead of result.leads) {
         const key = lead.cnpj ?? lead.name.toLowerCase();
         if (seenKeys.has(key)) continue;
@@ -276,6 +348,14 @@ export async function searchPncpAllPages(
 
     if (allLeads.length >= TARGET_LEADS) break;
   }
+
+  await logActivity("info", "pncp", "Resumo da busca PNCP", {
+    accepted: allLeads.length,
+    discarded,
+    maxPages,
+    region: params.region,
+    minValue: params.minValue ?? DEFAULT_MIN_VALUE,
+  });
 
   return allLeads;
 }

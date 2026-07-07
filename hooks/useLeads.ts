@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { LeadDTO, LeadStatus } from "@/types/lead";
+import type { LeadDTO, LeadStatus, OpportunityTemperature } from "@/types/lead";
 
 interface LeadsResponse {
   leads: LeadDTO[];
@@ -20,6 +20,9 @@ interface UseLeadsFilters {
   search?: string;
   region?: string;
   jobId?: string;
+  temperature?: OpportunityTemperature;
+  opportunityOnly?: boolean;
+  includeDiscarded?: boolean;
   page?: number;
   limit?: number;
 }
@@ -52,6 +55,9 @@ export function useLeads(initialFilters: UseLeadsFilters = {}) {
     if (current.search) params.set("search", current.search);
     if (current.region) params.set("region", current.region);
     if (current.jobId) params.set("jobId", current.jobId);
+    if (current.temperature) params.set("temperature", current.temperature);
+    if (current.opportunityOnly) params.set("opportunityOnly", "true");
+    if (current.includeDiscarded) params.set("includeDiscarded", "true");
     params.set("page", String(current.page ?? 1));
     params.set("limit", String(current.limit ?? 20));
 

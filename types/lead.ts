@@ -8,6 +8,14 @@ export type LeadStatus =
 
 export type LeadSource = "GOOGLE_PLACES" | "PNCP_BID" | "SCRAPER";
 
+export type OpportunityTemperature = "HOT" | "WARM" | "COLD" | "DISCARDED";
+export type OpportunityCategory =
+  | "CONSTRUCTION"
+  | "MATERIALS"
+  | "COMPANY"
+  | "NOISE"
+  | "UNKNOWN";
+
 export interface LeadContacts {
   phone?: string;
   email?: string;
@@ -36,9 +44,37 @@ export interface PncpMetadata {
   contractNumber?: string;
 }
 
+export interface OpportunityMetadata {
+  score: number;
+  temperature: OpportunityTemperature;
+  category: OpportunityCategory;
+  confidence: number;
+  reasons: string[];
+  penalties: string[];
+  matchedPositiveTerms: string[];
+  matchedNegativeTerms: string[];
+  estimatedDemand?: string[];
+  rejectionReason?: string;
+}
+
+export interface CnpjDataMetadata {
+  legalName?: string;
+  tradeName?: string;
+  status?: string;
+  mainCnae?: string;
+  mainCnaeDescription?: string;
+  secondaryCnaes?: string[];
+  city?: string;
+  state?: string;
+  size?: string;
+  sectorMatch?: "CONSTRUCTION" | "RELATED" | "NEGATIVE" | "UNKNOWN";
+}
+
 export interface LeadMetadata {
   google?: GoogleMetadata;
   pncp?: PncpMetadata;
+  opportunity?: OpportunityMetadata;
+  cnpjData?: CnpjDataMetadata;
   scraper?: Record<string, unknown>;
   aiSummary?: string;
   aiPitch?: string;

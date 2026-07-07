@@ -8,7 +8,7 @@ import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label, Select, Textarea } from "@/components/ui/input";
-import { ScoreBadge, StatusBadge } from "@/components/ui/badge";
+import { ScoreBadge, StatusBadge, TemperatureBadge } from "@/components/ui/badge";
 import { useLeads } from "@/hooks/useLeads";
 import type { LeadDTO, LeadStatus } from "@/types/lead";
 import { LEAD_SOURCE_LABELS } from "@/types/lead";
@@ -87,6 +87,11 @@ export default function LeadDetailPage() {
     );
   }
 
+  const opportunity = lead.metadata.opportunity;
+  const suggestedPitch = opportunity
+    ? `Vi que sua empresa está ligada a ${lead.metadata.pncp?.object ? `uma oportunidade de ${lead.metadata.pncp.object}` : "obras e reformas"}${lead.metadata.pncp?.buyerCity ? ` em ${lead.metadata.pncp.buyerCity}` : ""}. Trabalhamos com entrega rápida de materiais de construção como ${(opportunity.estimatedDemand?.slice(0, 4).join(", ") || "cimento, argamassa, hidráulica e elétrica")} na região. Posso te mandar uma condição comercial?`
+    : "Identifiquei sua empresa como potencial compradora de materiais de construção. Posso te mandar uma condição para fornecimento na sua região?";
+
   return (
     <div>
       <div className="mb-4">
@@ -104,6 +109,7 @@ export default function LeadDetailPage() {
       <div className="mb-6 flex flex-wrap gap-3">
         <StatusBadge status={lead.status} />
         <ScoreBadge score={lead.score} />
+        <TemperatureBadge temperature={opportunity?.temperature} />
         {lead.sources.map((source) => (
           <span
             key={source}
@@ -116,6 +122,47 @@ export default function LeadDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {opportunity && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Por que esse lead é bom?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                <div className="flex flex-wrap gap-2">
+                  <TemperatureBadge temperature={opportunity.temperature} />
+                  <ScoreBadge score={opportunity.score} />
+                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium dark:bg-slate-800">
+                    {opportunity.category}
+                  </span>
+                </div>
+                {opportunity.reasons.length > 0 && (
+                  <div>
+                    <p className="mb-1 font-medium text-green-700 dark:text-green-300">
+                      Sinais positivos
+                    </p>
+                    <ul className="list-inside list-disc space-y-1">
+                      {opportunity.reasons.map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {opportunity.penalties.length > 0 && (
+                  <div>
+                    <p className="mb-1 font-medium text-red-700 dark:text-red-300">
+                      Penalidades
+                    </p>
+                    <ul className="list-inside list-disc space-y-1">
+                      {opportunity.penalties.map((penalty) => (
+                        <li key={penalty}>{penalty}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Contatos e dados comerciais</CardTitle>
@@ -152,6 +199,22 @@ export default function LeadDetailPage() {
                 <p className="text-xs text-slate-500">Endereço</p>
                 <p className="font-medium">{lead.contacts.address ?? "—"}</p>
               </div>
+              {lead.metadata.cnpjData && (
+                <>
+                  <div>
+                    <p className="text-xs text-slate-500">Situação CNPJ</p>
+                    <p className="font-medium">
+                      {lead.metadata.cnpjData.status ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">CNAE principal</p>
+                    <p className="font-medium">
+                      {lead.metadata.cnpjData.mainCnaeDescription ?? "—"}
+                    </p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -225,6 +288,37 @@ export default function LeadDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {opportunity?.estimatedDemand?.length ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Possível demanda de materiais</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {opportunity.estimatedDemand.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Abordagem sugerida</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="rounded-lg bg-amber-50 p-4 text-sm dark:bg-amber-950/30">
+                {suggestedPitch}
+              </p>
+            </CardContent>
+          </Card>
 
           {(lead.prospectingJobs?.length || lead.lastProspectingJobId) && (
             <Card>

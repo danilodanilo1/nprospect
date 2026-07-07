@@ -9,7 +9,11 @@ import { useProspecting } from "@/hooks/useProspecting";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScoreBadge, StatusBadge } from "@/components/ui/badge";
+import {
+  ScoreBadge,
+  StatusBadge,
+  TemperatureBadge,
+} from "@/components/ui/badge";
 import { formatCnpj, formatCurrency } from "@/lib/utils";
 
 function formatDateYYYYMMDD(date: Date): string {
@@ -35,14 +39,18 @@ export default function BidsProspectingPage() {
   const { leads, pagination, fetchLeads } = useLeads({
     source: "PNCP_BID",
     region: "São Paulo, SP",
+    opportunityOnly: true,
     limit: 10,
   });
 
   const [region, setRegion] = useState("São Paulo, SP");
-  const [pncpObject, setPncpObject] = useState("obra, reforma, material");
-  const [keywords, setKeywords] = useState("construção, engenharia");
+  const [pncpObject, setPncpObject] = useState(
+    "obra, reforma, construção, ampliação, manutenção predial",
+  );
+  const [keywords, setKeywords] = useState("engenharia, alvenaria, hidráulica, elétrica");
   const [periodDays, setPeriodDays] = useState("90");
-  const [minValue, setMinValue] = useState("");
+  const [minValue, setMinValue] = useState("50000");
+  const [opportunityLevel, setOpportunityLevel] = useState("WARM_AND_HOT");
 
   const period = useMemo(
     () => dateRangeFromDays(Number(periodDays)),
@@ -51,8 +59,16 @@ export default function BidsProspectingPage() {
 
   useEffect(() => {
     fetchJobs("PNCP_BID");
-    fetchLeads({ source: "PNCP_BID", region, page: 1, limit: 10 });
-  }, [fetchJobs, fetchLeads, region]);
+    fetchLeads({
+      source: "PNCP_BID",
+      region,
+      page: 1,
+      limit: 10,
+      opportunityOnly: true,
+      ...(opportunityLevel === "HOT_ONLY" ? { temperature: "HOT" as const } : {}),
+      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45 } : {}),
+    });
+  }, [fetchJobs, fetchLeads, region, opportunityLevel]);
 
   async function handleSearch(event: React.FormEvent) {
     event.preventDefault();
@@ -73,6 +89,9 @@ export default function BidsProspectingPage() {
       jobId: job?._id,
       page: 1,
       limit: 10,
+      opportunityOnly: true,
+      ...(opportunityLevel === "HOT_ONLY" ? { temperature: "HOT" as const } : {}),
+      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45 } : {}),
     });
   }
 
@@ -82,6 +101,9 @@ export default function BidsProspectingPage() {
       region,
       page,
       limit: 10,
+      opportunityOnly: true,
+      ...(opportunityLevel === "HOT_ONLY" ? { temperature: "HOT" as const } : {}),
+      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45 } : {}),
     });
   }
 
@@ -158,6 +180,18 @@ export default function BidsProspectingPage() {
                     />
                   </div>
                 </div>
+                <div>
+                  <Label htmlFor="opportunityLevel">Nível de oportunidade</Label>
+                  <Select
+                    id="opportunityLevel"
+                    value={opportunityLevel}
+                    onChange={(event) => setOpportunityLevel(event.target.value)}
+                  >
+                    <option value="HOT_ONLY">Quentes apenas</option>
+                    <option value="WARM_AND_HOT">Quentes e médias</option>
+                    <option value="ALL">Todas exceto descartadas</option>
+                  </Select>
+                </div>
                 <Button type="submit" disabled={searching} className="w-full">
                   <Play className="h-4 w-4" />
                   {searching ? "Buscando PNCP..." : "Buscar licitações"}
@@ -199,6 +233,13 @@ export default function BidsProspectingPage() {
                     region,
                     page: pagination.page,
                     limit: 10,
+                    opportunityOnly: true,
+                    ...(opportunityLevel === "HOT_ONLY"
+                      ? { temperature: "HOT" as const }
+                      : {}),
+                    ...(opportunityLevel === "WARM_AND_HOT"
+                      ? { minScore: 45 }
+                      : {}),
                   })
                 }
               >
@@ -212,6 +253,7 @@ export default function BidsProspectingPage() {
                     <tr>
                       <th className="py-3 pr-4 font-medium">Empresa</th>
                       <th className="py-3 pr-4 font-medium">Licitação</th>
+                      <th className="py-3 pr-4 font-medium">Oportunidade</th>
                       <th className="py-3 pr-4 font-medium">Valor/Data</th>
                       <th className="py-3 pr-4 font-medium">Status</th>
                     </tr>
@@ -247,6 +289,26 @@ export default function BidsProspectingPage() {
                           </p>
                         </td>
                         <td className="py-3 pr-4 align-top text-xs">
+                          <div className="mb-2 flex flex-wrap gap-2">
+                            <TemperatureBadge
+                              temperature={lead.metadata.opportunity?.temperature}
+                            />
+                            <ScoreBadge score={lead.score} />
+                          </div>
+                          <p className="max-w-xs text-slate-600 dark:text-slate-400">
+                            {lead.metadata.opportunity?.reasons[0] ??
+                              "Sem motivo registrado"}
+                          </p>
+                          {lead.metadata.opportunity?.estimatedDemand?.length ? (
+                            <p className="mt-1 text-slate-500">
+                              Demanda:{" "}
+                              {lead.metadata.opportunity.estimatedDemand
+                                .slice(0, 3)
+                                .join(", ")}
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="py-3 pr-4 align-top text-xs">
                           <p>{formatCurrency(lead.metadata.pncp?.value)}</p>
                           <p className="mt-1 inline-flex items-center gap-1 text-slate-500">
                             <CalendarDays className="h-3 w-3" />
@@ -258,7 +320,6 @@ export default function BidsProspectingPage() {
                         <td className="py-3 pr-4 align-top">
                           <div className="flex flex-col gap-2">
                             <StatusBadge status={lead.status} />
-                            <ScoreBadge score={lead.score} />
                           </div>
                         </td>
                       </tr>

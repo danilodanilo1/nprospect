@@ -25,6 +25,9 @@ export async function GET(request: Request) {
     const search = searchParams.get("search");
     const region = searchParams.get("region");
     const jobId = searchParams.get("jobId");
+    const temperature = searchParams.get("temperature");
+    const opportunityOnly = searchParams.get("opportunityOnly") === "true";
+    const includeDiscarded = searchParams.get("includeDiscarded") === "true";
     const page = Number(searchParams.get("page") ?? "1");
     const limit = Math.min(Number(searchParams.get("limit") ?? "20"), 100);
 
@@ -34,6 +37,16 @@ export async function GET(request: Request) {
     if (source) filter.sources = source;
     if (minScore) filter.score = { $gte: Number(minScore) };
     if (jobId) filter.prospectingJobs = jobId;
+    if (temperature) {
+      filter["metadata.opportunity.temperature"] = temperature;
+    } else if (!includeDiscarded) {
+      filter["metadata.opportunity.temperature"] = { $ne: "DISCARDED" };
+    }
+    if (opportunityOnly) {
+      filter["metadata.opportunity.category"] = {
+        $in: ["CONSTRUCTION", "MATERIALS", "COMPANY"],
+      };
+    }
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },

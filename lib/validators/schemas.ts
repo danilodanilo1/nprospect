@@ -28,9 +28,37 @@ const pncpMetadataSchema = z.object({
   contractNumber: z.string().optional(),
 });
 
+const opportunityMetadataSchema = z.object({
+  score: z.number(),
+  temperature: z.enum(["HOT", "WARM", "COLD", "DISCARDED"]),
+  category: z.enum(["CONSTRUCTION", "MATERIALS", "COMPANY", "NOISE", "UNKNOWN"]),
+  confidence: z.number(),
+  reasons: z.array(z.string()),
+  penalties: z.array(z.string()),
+  matchedPositiveTerms: z.array(z.string()),
+  matchedNegativeTerms: z.array(z.string()),
+  estimatedDemand: z.array(z.string()).optional(),
+  rejectionReason: z.string().optional(),
+});
+
+const cnpjDataMetadataSchema = z.object({
+  legalName: z.string().optional(),
+  tradeName: z.string().optional(),
+  status: z.string().optional(),
+  mainCnae: z.string().optional(),
+  mainCnaeDescription: z.string().optional(),
+  secondaryCnaes: z.array(z.string()).optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  size: z.string().optional(),
+  sectorMatch: z.enum(["CONSTRUCTION", "RELATED", "NEGATIVE", "UNKNOWN"]).optional(),
+});
+
 const leadMetadataSchema = z.object({
   google: googleMetadataSchema.optional(),
   pncp: pncpMetadataSchema.optional(),
+  opportunity: opportunityMetadataSchema.optional(),
+  cnpjData: cnpjDataMetadataSchema.optional(),
   scraper: z.record(z.string(), z.unknown()).optional(),
   aiSummary: z.string().optional(),
   aiPitch: z.string().optional(),

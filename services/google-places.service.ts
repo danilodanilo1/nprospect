@@ -64,6 +64,17 @@ export async function searchGooglePlaces(
             types: place.types,
             businessStatus: place.business_status,
           },
+          opportunity: {
+            score: 20,
+            temperature: "COLD",
+            category: "COMPANY",
+            confidence: 60,
+            reasons: ["Empresa encontrada em segmento-alvo no Google Places"],
+            penalties: [],
+            matchedPositiveTerms: [params.query],
+            matchedNegativeTerms: [],
+            estimatedDemand: ["cimento", "argamassa", "hidráulica", "elétrica"],
+          },
         },
       };
 
@@ -94,6 +105,7 @@ export async function searchGooglePlaces(
             website: detail.website,
           },
           metadata: {
+            ...details.metadata,
             google: {
               rating: detail.rating ?? place.rating,
               reviews: detail.user_ratings_total ?? place.user_ratings_total,

@@ -9,15 +9,23 @@ import { useProspecting } from "@/hooks/useProspecting";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScoreBadge, StatusBadge } from "@/components/ui/badge";
+import {
+  ScoreBadge,
+  StatusBadge,
+  TemperatureBadge,
+} from "@/components/ui/badge";
 
 const SEGMENTS = [
   "construtora",
   "empreiteira",
-  "engenharia",
-  "arquitetura",
+  "engenharia civil",
+  "manutenção predial",
+  "reforma comercial",
+  "instalações elétricas",
+  "instalações hidráulicas",
+  "terraplenagem",
+  "pavimentação",
   "incorporadora",
-  "terraplanagem",
 ];
 
 export default function CompaniesProspectingPage() {
@@ -26,6 +34,7 @@ export default function CompaniesProspectingPage() {
   const { leads, pagination, fetchLeads } = useLeads({
     source: "GOOGLE_PLACES",
     region: "São Paulo, SP",
+    opportunityOnly: true,
     limit: 10,
   });
 
@@ -36,7 +45,13 @@ export default function CompaniesProspectingPage() {
 
   useEffect(() => {
     fetchJobs("GOOGLE_PLACES");
-    fetchLeads({ source: "GOOGLE_PLACES", region, page: 1, limit: 10 });
+    fetchLeads({
+      source: "GOOGLE_PLACES",
+      region,
+      page: 1,
+      limit: 10,
+      opportunityOnly: true,
+    });
   }, [fetchJobs, fetchLeads, region]);
 
   const query = customSegment.trim() || segment;
@@ -57,6 +72,7 @@ export default function CompaniesProspectingPage() {
       jobId: job?._id,
       page: 1,
       limit: 10,
+      opportunityOnly: true,
     });
   }
 
@@ -66,6 +82,7 @@ export default function CompaniesProspectingPage() {
       region,
       page,
       limit: 10,
+      opportunityOnly: true,
     });
   }
 
@@ -170,6 +187,7 @@ export default function CompaniesProspectingPage() {
                     region,
                     page: pagination.page,
                     limit: 10,
+                    opportunityOnly: true,
                   })
                 }
               >
@@ -183,6 +201,7 @@ export default function CompaniesProspectingPage() {
                     <tr>
                       <th className="py-3 pr-4 font-medium">Empresa</th>
                       <th className="py-3 pr-4 font-medium">Contato</th>
+                      <th className="py-3 pr-4 font-medium">Oportunidade</th>
                       <th className="py-3 pr-4 font-medium">Avaliação</th>
                       <th className="py-3 pr-4 font-medium">Status</th>
                     </tr>
@@ -218,6 +237,18 @@ export default function CompaniesProspectingPage() {
                           )}
                         </td>
                         <td className="py-3 pr-4 align-top text-xs">
+                          <div className="mb-2 flex flex-wrap gap-2">
+                            <TemperatureBadge
+                              temperature={lead.metadata.opportunity?.temperature}
+                            />
+                            <ScoreBadge score={lead.score} />
+                          </div>
+                          <p className="max-w-xs text-slate-600 dark:text-slate-400">
+                            {lead.metadata.opportunity?.reasons[0] ??
+                              "Empresa em segmento-alvo"}
+                          </p>
+                        </td>
+                        <td className="py-3 pr-4 align-top text-xs">
                           <p>{lead.metadata.google?.rating ?? "—"} estrelas</p>
                           <p className="text-slate-500">
                             {lead.metadata.google?.reviews ?? 0} reviews
@@ -236,7 +267,6 @@ export default function CompaniesProspectingPage() {
                         <td className="py-3 pr-4 align-top">
                           <div className="flex flex-col gap-2">
                             <StatusBadge status={lead.status} />
-                            <ScoreBadge score={lead.score} />
                           </div>
                         </td>
                       </tr>

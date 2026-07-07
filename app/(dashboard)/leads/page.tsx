@@ -8,11 +8,16 @@ import { useLeads } from "@/hooks/useLeads";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScoreBadge, StatusBadge } from "@/components/ui/badge";
+import {
+  ScoreBadge,
+  StatusBadge,
+  TemperatureBadge,
+} from "@/components/ui/badge";
 import {
   LEAD_SOURCE_LABELS,
   type LeadSource,
   type LeadStatus,
+  type OpportunityTemperature,
 } from "@/types/lead";
 import { formatCnpj } from "@/lib/utils";
 
@@ -25,6 +30,11 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
   const [sourceFilter, setSourceFilter] = useState<LeadSource | "">("");
   const [regionFilter, setRegionFilter] = useState("São Paulo, SP");
+  const [temperatureFilter, setTemperatureFilter] = useState<
+    OpportunityTemperature | ""
+  >("");
+  const [opportunityOnly, setOpportunityOnly] = useState(true);
+  const [includeDiscarded, setIncludeDiscarded] = useState(false);
   const [minScore, setMinScore] = useState("");
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
@@ -41,6 +51,9 @@ export default function LeadsPage() {
       status: statusFilter || undefined,
       source: sourceFilter || undefined,
       region: regionFilter || undefined,
+      temperature: temperatureFilter || undefined,
+      opportunityOnly,
+      includeDiscarded,
       minScore: minScore ? Number(minScore) : undefined,
       page: nextPage,
       limit: 20,
@@ -78,7 +91,7 @@ export default function LeadsPage() {
       </p>
 
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-8">
           <div>
             <Label htmlFor="search">Buscar</Label>
             <Input
@@ -131,6 +144,22 @@ export default function LeadsPage() {
             />
           </div>
           <div>
+            <Label htmlFor="temperature">Temperatura</Label>
+            <Select
+              id="temperature"
+              value={temperatureFilter}
+              onChange={(e) =>
+                setTemperatureFilter(e.target.value as OpportunityTemperature | "")
+              }
+            >
+              <option value="">Todas úteis</option>
+              <option value="HOT">Quente</option>
+              <option value="WARM">Médio</option>
+              <option value="COLD">Frio</option>
+              <option value="DISCARDED">Descartado</option>
+            </Select>
+          </div>
+          <div>
             <Label htmlFor="minScore">Score mínimo</Label>
             <Input
               id="minScore"
@@ -147,6 +176,22 @@ export default function LeadsPage() {
               Filtrar
             </Button>
           </div>
+          <label className="flex items-end gap-2 pb-2 text-sm text-slate-600 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={opportunityOnly}
+              onChange={(e) => setOpportunityOnly(e.target.checked)}
+            />
+            Só oportunidades
+          </label>
+          <label className="flex items-end gap-2 pb-2 text-sm text-slate-600 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={includeDiscarded}
+              onChange={(e) => setIncludeDiscarded(e.target.checked)}
+            />
+            Incluir descartados
+          </label>
         </div>
         <Button onClick={() => setShowForm((v) => !v)}>
           <Plus className="h-4 w-4" />
@@ -196,7 +241,7 @@ export default function LeadsPage() {
               <th className="px-4 py-3 font-medium">Local</th>
               <th className="px-4 py-3 font-medium">CNPJ</th>
               <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Score</th>
+              <th className="px-4 py-3 font-medium">Oportunidade</th>
               <th className="px-4 py-3 font-medium">Fontes</th>
               <th className="px-4 py-3 font-medium">Atualizado</th>
             </tr>
@@ -223,7 +268,15 @@ export default function LeadsPage() {
                   <StatusBadge status={lead.status} />
                 </td>
                 <td className="px-4 py-3">
-                  <ScoreBadge score={lead.score} />
+                  <div className="flex flex-col gap-2">
+                    <TemperatureBadge
+                      temperature={lead.metadata.opportunity?.temperature}
+                    />
+                    <ScoreBadge score={lead.score} />
+                    <span className="max-w-xs text-xs text-slate-500">
+                      {lead.metadata.opportunity?.reasons[0] ?? "Sem motivo"}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   {lead.sources.map((s) => LEAD_SOURCE_LABELS[s]).join(", ")}
@@ -253,6 +306,9 @@ export default function LeadsPage() {
               <p className="text-sm text-slate-500">{formatCnpj(lead.cnpj)}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <StatusBadge status={lead.status} />
+                <TemperatureBadge
+                  temperature={lead.metadata.opportunity?.temperature}
+                />
                 <ScoreBadge score={lead.score} />
               </div>
             </CardContent>
