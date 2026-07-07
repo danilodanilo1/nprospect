@@ -3,40 +3,11 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import ProspectingJob from "@/models/ProspectingJob";
 import { prospectingSearchSchema } from "@/lib/validators";
-import { searchGooglePlaces } from "@/services/google-places.service";
-import { searchPncpAllPages } from "@/services/pncp.service";
-import { ingestLeadsBatch } from "@/services/lead-ingestion.service";
+import {
+  getProspectingWarnings,
+  runProspectingJob,
+} from "@/services/prospecting-job.service";
 import { logActivity } from "@/services/activity-log.service";
-
-async function triggerN8nWebhook(
-  jobId: string,
-  filters: ReturnType<typeof prospectingSearchSchema.parse>,
-): Promise<void> {
-  const webhookUrl = process.env.N8N_WEBHOOK_URL;
-  if (!webhookUrl) return;
-
-  try {
-    await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(process.env.N8N_WEBHOOK_SECRET
-          ? { "X-Webhook-Secret": process.env.N8N_WEBHOOK_SECRET }
-          : {}),
-      },
-      body: JSON.stringify({
-        jobId,
-        filters,
-        callbackUrl: `${process.env.NEXTAUTH_URL}/api/webhooks/leads-ingestion`,
-      }),
-    });
-  } catch (error) {
-    await logActivity("warn", "prospecting", "Falha ao disparar n8n", {
-      jobId,
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-}
 
 export async function POST(request: Request) {
   try {
@@ -56,43 +27,16 @@ export async function POST(request: Request) {
 
     const jobId = job._id.toString();
     const sources = filters.sources ?? ["GOOGLE_PLACES", "PNCP_BID"];
-    const collectedLeads = [];
 
-    if (sources.includes("GOOGLE_PLACES")) {
-      const googleLeads = await searchGooglePlaces({
-        query: (filters.keywords ?? ["construtora"]).join(" "),
-        region: filters.region ?? process.env.DEFAULT_SEARCH_REGION,
-        radiusKm: filters.radiusKm,
-      });
-      collectedLeads.push(...googleLeads);
-    }
-
-    if (sources.includes("PNCP_BID")) {
-      const pncpLeads = await searchPncpAllPages({
-        keywords: filters.keywords,
-        object: filters.pncpObject,
-      });
-      collectedLeads.push(...pncpLeads);
-    }
-
-    const ingestion = await ingestLeadsBatch(collectedLeads, jobId);
-
-    await ProspectingJob.findByIdAndUpdate(jobId, {
-      status: "COMPLETED",
-      leadsFound: ingestion.created + ingestion.updated,
-    });
-
-    void triggerN8nWebhook(jobId, filters);
-
-    const updatedJob = await ProspectingJob.findById(jobId).lean();
+    void runProspectingJob(jobId, filters);
 
     return NextResponse.json({
       job: {
         _id: jobId,
-        status: updatedJob?.status ?? "COMPLETED",
+        status: "RUNNING",
         filters,
-        leadsFound: updatedJob?.leadsFound ?? 0,
-        ingestion,
+        leadsFound: 0,
+        warnings: getProspectingWarnings(sources),
       },
     });
   } catch (error) {
