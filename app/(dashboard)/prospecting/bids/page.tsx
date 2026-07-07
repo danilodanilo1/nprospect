@@ -39,7 +39,6 @@ export default function BidsProspectingPage() {
   const { leads, pagination, fetchLeads } = useLeads({
     source: "PNCP_BID",
     region: "São Paulo, SP",
-    opportunityOnly: true,
     limit: 10,
   });
 
@@ -49,8 +48,8 @@ export default function BidsProspectingPage() {
   );
   const [keywords, setKeywords] = useState("engenharia, alvenaria, hidráulica, elétrica");
   const [periodDays, setPeriodDays] = useState("90");
-  const [minValue, setMinValue] = useState("50000");
-  const [opportunityLevel, setOpportunityLevel] = useState("WARM_AND_HOT");
+  const [minValue, setMinValue] = useState("10000");
+  const [opportunityLevel, setOpportunityLevel] = useState("ALL");
 
   const period = useMemo(
     () => dateRangeFromDays(Number(periodDays)),
@@ -64,9 +63,9 @@ export default function BidsProspectingPage() {
       region,
       page: 1,
       limit: 10,
-      opportunityOnly: true,
       ...(opportunityLevel === "HOT_ONLY" ? { temperature: "HOT" as const } : {}),
-      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45 } : {}),
+      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45, opportunityOnly: true } : {}),
+      ...(opportunityLevel === "ALL" ? {} : { opportunityOnly: true }),
     });
   }, [fetchJobs, fetchLeads, region, opportunityLevel]);
 
@@ -89,9 +88,8 @@ export default function BidsProspectingPage() {
       jobId: job?._id,
       page: 1,
       limit: 10,
-      opportunityOnly: true,
-      ...(opportunityLevel === "HOT_ONLY" ? { temperature: "HOT" as const } : {}),
-      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45 } : {}),
+      ...(opportunityLevel === "HOT_ONLY" ? { temperature: "HOT" as const, opportunityOnly: true } : {}),
+      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45, opportunityOnly: true } : {}),
     });
   }
 
@@ -101,9 +99,8 @@ export default function BidsProspectingPage() {
       region,
       page,
       limit: 10,
-      opportunityOnly: true,
-      ...(opportunityLevel === "HOT_ONLY" ? { temperature: "HOT" as const } : {}),
-      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45 } : {}),
+      ...(opportunityLevel === "HOT_ONLY" ? { temperature: "HOT" as const, opportunityOnly: true } : {}),
+      ...(opportunityLevel === "WARM_AND_HOT" ? { minScore: 45, opportunityOnly: true } : {}),
     });
   }
 
@@ -111,9 +108,9 @@ export default function BidsProspectingPage() {
     <div>
       <DashboardHeader title="Prospecção Licitações" />
       <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
-        Encontre empresas que venceram contratos públicos relacionados a obras,
-        reformas, engenharia e materiais. A região PNCP considera o órgão
-        contratante; o fornecedor pode estar em outra cidade.
+        Encontre licitações e contratos públicos de obras, reformas e engenharia
+        em SP. Clique em &quot;Buscar licitações&quot; para trazer novos resultados
+        — a lista abaixo mostra o que já foi salvo no banco.
       </p>
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -233,12 +230,11 @@ export default function BidsProspectingPage() {
                     region,
                     page: pagination.page,
                     limit: 10,
-                    opportunityOnly: true,
                     ...(opportunityLevel === "HOT_ONLY"
-                      ? { temperature: "HOT" as const }
+                      ? { temperature: "HOT" as const, opportunityOnly: true }
                       : {}),
                     ...(opportunityLevel === "WARM_AND_HOT"
-                      ? { minScore: 45 }
+                      ? { minScore: 45, opportunityOnly: true }
                       : {}),
                   })
                 }
@@ -329,7 +325,9 @@ export default function BidsProspectingPage() {
               </div>
               {leads.length === 0 && (
                 <p className="py-8 text-center text-sm text-slate-500">
-                  Nenhum vencedor encontrado ainda. Rode uma busca PNCP.
+                  Nenhuma licitação salva ainda para SP. Clique em &quot;Buscar
+                  licitações&quot; — a API do PNCP pode levar alguns minutos para
+                  responder.
                 </p>
               )}
               <div className="mt-4 flex items-center justify-between text-sm">

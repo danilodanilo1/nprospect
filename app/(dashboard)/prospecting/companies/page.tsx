@@ -34,7 +34,6 @@ export default function CompaniesProspectingPage() {
   const { leads, pagination, fetchLeads } = useLeads({
     source: "GOOGLE_PLACES",
     region: "São Paulo, SP",
-    opportunityOnly: true,
     limit: 10,
   });
 
@@ -50,7 +49,6 @@ export default function CompaniesProspectingPage() {
       region,
       page: 1,
       limit: 10,
-      opportunityOnly: true,
     });
   }, [fetchJobs, fetchLeads, region]);
 
@@ -72,7 +70,6 @@ export default function CompaniesProspectingPage() {
       jobId: job?._id,
       page: 1,
       limit: 10,
-      opportunityOnly: true,
     });
   }
 
@@ -82,18 +79,29 @@ export default function CompaniesProspectingPage() {
       region,
       page,
       limit: 10,
-      opportunityOnly: true,
     });
   }
 
   return (
     <div>
       <DashboardHeader title="Prospecção Empresas" />
-      <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
+      <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
         Encontre construtoras, empreiteiras, engenharias e outros segmentos no
-        Google Places. Os dados retornam com telefone, site, endereço, avaliação
-        e link do Google Maps quando disponíveis.
+        Google Places. Clique em &quot;Buscar empresas&quot; para trazer novos
+        resultados.
       </p>
+
+      <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+        <p className="font-medium">Google Places requer chave de API</p>
+        <p className="mt-1">
+          Para buscar empresas, configure{" "}
+          <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">
+            GOOGLE_PLACES_API_KEY
+          </code>{" "}
+          no arquivo <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">.env.local</code>{" "}
+          e reinicie o servidor. Sem essa chave, a busca retorna zero resultados.
+        </p>
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="space-y-6">
@@ -187,7 +195,6 @@ export default function CompaniesProspectingPage() {
                     region,
                     page: pagination.page,
                     limit: 10,
-                    opportunityOnly: true,
                   })
                 }
               >
@@ -276,7 +283,8 @@ export default function CompaniesProspectingPage() {
               </div>
               {leads.length === 0 && (
                 <p className="py-8 text-center text-sm text-slate-500">
-                  Nenhuma empresa encontrada ainda. Rode uma busca no formulário.
+                  Nenhuma empresa salva ainda. Configure a chave do Google Places
+                  no .env.local e clique em &quot;Buscar empresas&quot;.
                 </p>
               )}
               <div className="mt-4 flex items-center justify-between text-sm">
