@@ -19,6 +19,8 @@ export interface ILead extends Document {
   metadata: LeadMetadata;
   notes: ILeadNote[];
   assignedTo?: mongoose.Types.ObjectId;
+  prospectingJobs: mongoose.Types.ObjectId[];
+  lastProspectingJobId?: mongoose.Types.ObjectId;
   lastActivityAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -59,12 +61,18 @@ const LeadSchema = new Schema<ILead>(
     metadata: { type: Schema.Types.Mixed, default: {} },
     notes: { type: [LeadNoteSchema], default: [] },
     assignedTo: { type: Schema.Types.ObjectId, ref: "User" },
+    prospectingJobs: {
+      type: [{ type: Schema.Types.ObjectId, ref: "ProspectingJob" }],
+      default: [],
+    },
+    lastProspectingJobId: { type: Schema.Types.ObjectId, ref: "ProspectingJob" },
     lastActivityAt: { type: Date, default: Date.now },
   },
   { timestamps: true },
 );
 
 LeadSchema.index({ name: "text", "contacts.address": "text" });
+LeadSchema.index({ sources: 1, lastProspectingJobId: 1, updatedAt: -1 });
 
 const Lead: Model<ILead> =
   mongoose.models.Lead ?? mongoose.model<ILead>("Lead", LeadSchema);

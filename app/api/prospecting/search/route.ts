@@ -71,6 +71,10 @@ export async function POST(request: Request) {
       const pncpLeads = await searchPncpAllPages({
         keywords: filters.keywords,
         object: filters.pncpObject,
+        region: filters.region ?? process.env.DEFAULT_SEARCH_REGION,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+        minValue: filters.minValue,
       });
       collectedLeads.push(...pncpLeads);
     }
