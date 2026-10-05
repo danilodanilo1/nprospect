@@ -5,6 +5,7 @@ import Lead from "@/models/Lead";
 import { mapLeadToDTO } from "@/lib/lead-mapper";
 import { leadCreateSchema } from "@/lib/validators";
 import { normalizeCnpj } from "@/lib/utils";
+import { parseRegion } from "@/lib/region";
 import { calculateLeadScore } from "@/services/scoring.service";
 import type { LeadSource } from "@/types/lead";
 
@@ -22,19 +23,62 @@ export async function GET(request: Request) {
     const source = searchParams.get("source");
     const minScore = searchParams.get("minScore");
     const search = searchParams.get("search");
+    const region = searchParams.get("region");
+    const jobId = searchParams.get("jobId");
+    const temperature = searchParams.get("temperature");
+    const opportunityOnly = searchParams.get("opportunityOnly") === "true";
+    const includeDiscarded = searchParams.get("includeDiscarded") === "true";
     const page = Number(searchParams.get("page") ?? "1");
-    const limit = Number(searchParams.get("limit") ?? "20");
+    const limit = Math.min(Number(searchParams.get("limit") ?? "20"), 100);
 
     const filter: Record<string, unknown> = {};
 
     if (status) filter.status = status;
     if (source) filter.sources = source;
     if (minScore) filter.score = { $gte: Number(minScore) };
+    if (jobId) filter.prospectingJobs = jobId;
+    if (temperature) {
+      filter["metadata.opportunity.temperature"] = temperature;
+    } else if (!includeDiscarded) {
+      filter["metadata.opportunity.temperature"] = { $ne: "DISCARDED" };
+    }
+    if (opportunityOnly) {
+      filter["metadata.opportunity.category"] = {
+        $in: ["CONSTRUCTION", "MATERIALS", "COMPANY"],
+      };
+    }
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
         { cnpj: { $regex: search.replace(/\D/g, ""), $options: "i" } },
       ];
+    }
+
+    const parsedRegion = parseRegion(region ?? undefined);
+    if (parsedRegion) {
+      const regionClauses: Record<string, unknown>[] = [];
+
+      if (parsedRegion.state) {
+        regionClauses.push({
+          "contacts.address": {
+            $regex: `- ${parsedRegion.state}$|${parsedRegion.state}`,
+            $options: "i",
+          },
+        });
+      }
+
+      if (parsedRegion.city && parsedRegion.requireCity !== false) {
+        regionClauses.push({
+          "contacts.address": {
+            $regex: parsedRegion.city,
+            $options: "i",
+          },
+        });
+      }
+
+      if (regionClauses.length > 0) {
+        filter.$and = [...((filter.$and as unknown[]) ?? []), ...regionClauses];
+      }
     }
 
     const skip = (page - 1) * limit;

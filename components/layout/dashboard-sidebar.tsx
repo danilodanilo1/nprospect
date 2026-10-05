@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Search,
   Settings,
   Menu,
   X,
   HardHat,
+  Building2,
+  Trophy,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,8 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/leads", label: "Leads", icon: Users },
-  { href: "/prospecting", label: "Prospecção", icon: Search },
+  { href: "/prospecting/companies", label: "Prospecção Empresas", icon: Building2 },
+  { href: "/prospecting/bids", label: "Prospecção Licitações", icon: Trophy },
   { href: "/settings", label: "Configurações", icon: Settings },
 ];
 

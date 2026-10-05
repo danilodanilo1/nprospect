@@ -9,6 +9,9 @@ export interface ProspectingFilters {
   radiusKm?: number;
   keywords?: string[];
   pncpObject?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  minValue?: number;
   sources?: ("GOOGLE_PLACES" | "PNCP_BID")[];
 }
 

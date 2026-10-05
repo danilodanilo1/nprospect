@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import ProspectingJob from "@/models/ProspectingJob";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await auth();
     if (!session) {
@@ -11,8 +11,13 @@ export async function GET() {
     }
 
     await connectDB();
+    const { searchParams } = new URL(request.url);
+    const source = searchParams.get("source");
+    const filter: Record<string, unknown> = source
+      ? { "filters.sources": source }
+      : {};
 
-    const jobs = await ProspectingJob.find()
+    const jobs = await ProspectingJob.find(filter)
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();

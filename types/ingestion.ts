@@ -7,6 +7,7 @@ export interface IngestionLeadPayload {
   source: LeadSource;
   placeId?: string;
   metadata?: LeadMetadata;
+  prospectingJobId?: string;
 }
 
 export interface LeadsIngestionPayload {

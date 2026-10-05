@@ -19,6 +19,10 @@ export function mapLeadToDTO(lead: ILead): LeadDTO {
       createdBy: note.createdBy?.toString(),
     })),
     assignedTo: lead.assignedTo?.toString(),
+    prospectingJobs: (lead.prospectingJobs ?? []).map((jobId) =>
+      jobId.toString(),
+    ),
+    lastProspectingJobId: lead.lastProspectingJobId?.toString(),
     lastActivityAt: lead.lastActivityAt.toISOString(),
     createdAt: lead.createdAt.toISOString(),
     updatedAt: lead.updatedAt.toISOString(),

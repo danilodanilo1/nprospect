@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import type { LeadDTO, LeadStatus } from "@/types/lead";
+import { useCallback, useRef, useState } from "react";
+import type { LeadDTO, LeadStatus, OpportunityTemperature } from "@/types/lead";
 
 interface LeadsResponse {
   leads: LeadDTO[];
@@ -18,7 +18,13 @@ interface UseLeadsFilters {
   source?: string;
   minScore?: number;
   search?: string;
+  region?: string;
+  jobId?: string;
+  temperature?: OpportunityTemperature;
+  opportunityOnly?: boolean;
+  includeDiscarded?: boolean;
   page?: number;
+  limit?: number;
 }
 
 export function useLeads(initialFilters: UseLeadsFilters = {}) {
@@ -32,42 +38,48 @@ export function useLeads(initialFilters: UseLeadsFilters = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState(initialFilters);
+  const filtersRef = useRef(initialFilters);
 
-  const fetchLeads = useCallback(
-    async (override?: UseLeadsFilters) => {
-      setLoading(true);
-      setError(null);
+  const fetchLeads = useCallback(async (override?: UseLeadsFilters) => {
+    setLoading(true);
+    setError(null);
 
-      const current = { ...filters, ...override };
-      const params = new URLSearchParams();
+    const current = { ...filtersRef.current, ...override };
+    filtersRef.current = current;
 
-      if (current.status) params.set("status", current.status);
-      if (current.source) params.set("source", current.source);
-      if (current.minScore) params.set("minScore", String(current.minScore));
-      if (current.search) params.set("search", current.search);
-      params.set("page", String(current.page ?? 1));
+    const params = new URLSearchParams();
 
-      try {
-        const response = await fetch(`/api/leads?${params.toString()}`);
-        const data = (await response.json()) as LeadsResponse & {
-          error?: string;
-        };
+    if (current.status) params.set("status", current.status);
+    if (current.source) params.set("source", current.source);
+    if (current.minScore) params.set("minScore", String(current.minScore));
+    if (current.search) params.set("search", current.search);
+    if (current.region) params.set("region", current.region);
+    if (current.jobId) params.set("jobId", current.jobId);
+    if (current.temperature) params.set("temperature", current.temperature);
+    if (current.opportunityOnly) params.set("opportunityOnly", "true");
+    if (current.includeDiscarded) params.set("includeDiscarded", "true");
+    params.set("page", String(current.page ?? 1));
+    params.set("limit", String(current.limit ?? 20));
 
-        if (!response.ok) {
-          throw new Error(data.error ?? "Erro ao carregar leads");
-        }
+    try {
+      const response = await fetch(`/api/leads?${params.toString()}`);
+      const data = (await response.json()) as LeadsResponse & {
+        error?: string;
+      };
 
-        setLeads(data.leads);
-        setPagination(data.pagination);
-        setFilters(current);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Erro desconhecido");
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(data.error ?? "Erro ao carregar leads");
       }
-    },
-    [filters],
-  );
+
+      setLeads(data.leads);
+      setPagination(data.pagination);
+      setFilters(current);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const updateLead = useCallback(
     async (id: string, data: Record<string, unknown>) => {
