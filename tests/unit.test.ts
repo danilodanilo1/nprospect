@@ -92,3 +92,14 @@ test("e-mail: remove texto citado", () => {
   const t = "Tenho interesse sim!\n\nEm ter., 10 de nov. de 2026 às 10:00, Danilo escreveu:\n> Oi Ana";
   assert.equal(stripQuoted(t), "Tenho interesse sim!");
 });
+
+test("aquecimento: 5 no 1º dia, +2 por dia de envio, teto no limite", async () => {
+  const { effectiveDailyLimit } = await import("@/lib/guard");
+  const cfg = { ...DEFAULT_GUARD_CONFIG, warmupStart: "2026-11-17" }; // terça
+  assert.equal(effectiveDailyLimit(new Date("2026-11-16T13:00:00Z"), cfg), 0); // antes do início
+  assert.equal(effectiveDailyLimit(new Date("2026-11-17T13:00:00Z"), cfg), 5);
+  assert.equal(effectiveDailyLimit(new Date("2026-11-18T13:00:00Z"), cfg), 7);
+  assert.equal(effectiveDailyLimit(new Date("2026-11-24T13:00:00Z"), cfg), 11); // ter,qua,qui + ter = 3 dias antes
+  assert.equal(effectiveDailyLimit(new Date("2027-01-12T13:00:00Z"), cfg), 20);
+  assert.equal(checkSend({ ...base, now: new Date("2026-11-17T13:00:00Z"), sentFirstTouchesToday: 5 }, cfg).ok, false);
+});
