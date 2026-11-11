@@ -1,3 +1,57 @@
+# Nprospect: vendas do nRecruit
+
+Sistema local de prospecção e venda do nRecruit. Um botão Liga/Desliga, funil de 10 estágios,
+humano pode assumir qualquer lead, e todo envio e resposta fica no log.
+Arquitetura: [doc no Claude](https://claude.ai/artifact/21DPb7vFTSH9g9PqhQGqJs).
+
+## Rodar na sua máquina
+
+```bash
+npm install
+cp .env.example .env.local   # preencha MONGODB_URI, ADMIN_*, SMTP_* e pelo menos uma IA
+npm run build && npm run start   # painel em http://localhost:3000/funil
+npm run worker                   # em outro terminal: o worker que executa os agentes
+```
+
+MongoDB: Atlas M0 (grátis) ou local (`docker run -d -p 27017:27017 mongo:7`).
+IA: Ollama local (`ollama pull qwen2.5:7b`) e/ou chaves grátis de Gemini, Groq ou OpenRouter.
+Sem IA nenhuma o sistema usa textos fixos; sem SMTP ele só qualifica e redige.
+
+## Como funciona
+
+| Peça | Onde |
+| --- | --- |
+| Liga/Desliga, status do worker | barra lateral (`components/funnel/system-toggle.tsx`) |
+| Funil com Assumir / Devolver / Pausar / Remover | `/funil` |
+| Histórico de um lead + escrever você mesmo | `/funil/[id]` |
+| Log de todas as interações | `/conversas` |
+| Rascunhos esperando você | `/aprovacoes` |
+| Agentes (Caçador, Qualificador, Redator, Disparador, Leitor, Closer) | `worker/pipeline.ts` |
+| Guarda (limite diário, dias e horário, bounce, bloqueio) | `lib/guard.ts` |
+| Coletores de leads (engenharia reversa) | `collectors/` (ver `collectors/README.md`) |
+| Prompts versionados | `prompts/index.ts` |
+
+Regras que o código garante:
+
+- Desligado, nada sai. O worker relê o botão antes de cada envio.
+- Lead assumido por humano: a IA cancela os rascunhos dela e não age mais nele.
+- Todo estágio começa em "Aprovar antes". Mude em Funil → Modo de cada estágio.
+- Máximo de 20 primeiros contatos por dia, ter a qui, 9h às 11h (configurável). Respostas a quem escreveu saem a qualquer hora.
+- Bounce acima de 3% em 7 dias ou 2 pedidos de remoção em 24h desligam o sistema sozinho.
+- Quem pede para sair entra na lista de bloqueio e nunca volta, nem se for importado de novo.
+- Follow-ups saem na mesma conversa (In-Reply-To/References).
+- Nenhum coletor usa login de conta pessoal.
+
+## Testes
+
+```bash
+npm test   # unitários + funil de ponta a ponta (precisa de MongoDB em TEST_MONGODB_URI ou localhost:27017)
+```
+
+---
+
+# Legado: Pospect (construção)
+
 # Pospect
 
 CRM B2B de prospecção inteligente para lojas de materiais de construção. Integra **PNCP**, **Google Places**, **IA** e automação **n8n** com deduplicação multi-fonte e scoring automático.
