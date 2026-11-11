@@ -22,3 +22,14 @@ No Claude Code do PC (não roda na nuvem, precisa de navegador):
 
 Atalho: qualquer script pode só gravar um CSV em `data/inbox/`. O coletor `csv-inbox` importa sozinho.
 Colunas: `empresa, nome, email, telefone, site, instagram, linkedin, cidade, cnpj, pessoas, sinal, evidencia, url_evidencia, data_sinal`.
+
+## Fontes de vagas (estado em 11/11/2026)
+
+| Coletor | Fonte | Situação |
+|---|---|---|
+| `infojobs` | busca pública + JSON-LD do detalhe | funciona (3 leads SEM_ATS no `--dry`) |
+| `linkedin-vagas` | `jobs-guest` (busca pública, sem login) | funciona; 2 páginas por busca deram 429, por isso 1 página e 15 detalhes por rodada |
+| Indeed Brasil | — | fora: 403 "Security Check" (Cloudflare) |
+| Reclame Aqui | — | fora: 403 "Just a moment..." (Cloudflare) na página e na API de busca |
+
+Lógica comum (filtro de consultoria, SEM_ATS, VOLUME_ALTO) em `collectors/vagas.ts`.
