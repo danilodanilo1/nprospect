@@ -11,12 +11,19 @@ import {
   HardHat,
   Building2,
   Trophy,
+  KanbanSquare,
+  MessagesSquare,
+  CheckSquare,
 } from "lucide-react";
+import { SystemToggle } from "@/components/funnel/system-toggle";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
+  { href: "/funil", label: "Funil nRecruit", icon: KanbanSquare },
+  { href: "/conversas", label: "Conversas", icon: MessagesSquare },
+  { href: "/aprovacoes", label: "Aprovações", icon: CheckSquare },
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/prospecting/companies", label: "Prospecção Empresas", icon: Building2 },
@@ -34,10 +41,11 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           <HardHat className="h-5 w-5" />
         </div>
         <div>
-          <p className="font-bold text-slate-900 dark:text-white">Pospect</p>
-          <p className="text-xs text-slate-500">Materiais de Construção</p>
+          <p className="font-bold text-slate-900 dark:text-white">Nprospect</p>
+          <p className="text-xs text-slate-500">Vendas do nRecruit</p>
         </div>
       </div>
+      <SystemToggle />
       <nav className="flex flex-1 flex-col gap-1 px-3">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active =
@@ -76,7 +84,7 @@ export function DashboardSidebar() {
       <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden dark:border-slate-800 dark:bg-slate-950">
         <div className="flex items-center gap-2">
           <HardHat className="h-5 w-5 text-amber-600" />
-          <span className="font-bold">Pospect</span>
+          <span className="font-bold">Nprospect</span>
         </div>
         <Button
           variant="ghost"
