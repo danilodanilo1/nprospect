@@ -10,6 +10,10 @@ export interface GuardConfig {
   timeZone: string;
   maxBounceRate: number; // 0.03 = 3%
   maxRemovalsPerDay: number;
+  /** aquecimento da caixa nova: dia 1 da rampa (YYYY-MM-DD). Sem data = sem rampa. */
+  warmupStart?: string;
+  warmupStartLimit: number; // e-mails novos no 1º dia
+  warmupStep: number; // quantos a mais por dia útil de envio
 }
 
 export const DEFAULT_GUARD_CONFIG: GuardConfig = {
@@ -20,7 +24,24 @@ export const DEFAULT_GUARD_CONFIG: GuardConfig = {
   timeZone: "America/Sao_Paulo",
   maxBounceRate: 0.03,
   maxRemovalsPerDay: 2,
+  warmupStartLimit: 5,
+  warmupStep: 2,
 };
+
+/** Limite de primeiros contatos do dia, com a rampa de aquecimento aplicada. */
+export function effectiveDailyLimit(now: Date, cfg: GuardConfig = DEFAULT_GUARD_CONFIG): number {
+  if (!cfg.warmupStart) return cfg.dailyLimit;
+  const start = Date.parse(`${cfg.warmupStart}T00:00:00Z`);
+  if (Number.isNaN(start)) return cfg.dailyLimit;
+  const today = Date.parse(`${localParts(now, cfg.timeZone).day}T00:00:00Z`);
+  if (today < start) return 0;
+  // conta só os dias de envio permitidos desde o início da rampa
+  let sendDays = 0;
+  for (let t = start; t < today; t += 864e5) {
+    if (cfg.allowedWeekdays.includes(new Date(t).getUTCDay())) sendDays++;
+  }
+  return Math.min(cfg.dailyLimit, cfg.warmupStartLimit + sendDays * cfg.warmupStep);
+}
 
 export interface GuardContext {
   now: Date;
@@ -82,8 +103,12 @@ export function checkSend(ctx: GuardContext, cfg: GuardConfig = DEFAULT_GUARD_CO
     if (hour < cfg.startHour || hour >= cfg.endHour) return { ok: false, reason: "Fora do horário de envio" };
   }
 
-  if (ctx.isFirstTouch && ctx.sentFirstTouchesToday >= cfg.dailyLimit) {
-    return { ok: false, reason: `Limite de ${cfg.dailyLimit} novos contatos por dia atingido` };
+  const limit = effectiveDailyLimit(ctx.now, cfg);
+  if (ctx.isFirstTouch && ctx.sentFirstTouchesToday >= limit) {
+    return {
+      ok: false,
+      reason: `Limite de ${limit} novos contatos por dia atingido${limit < cfg.dailyLimit ? " (aquecimento da caixa)" : ""}`,
+    };
   }
 
   return { ok: true };
@@ -101,5 +126,8 @@ export function guardConfigFromEnv(env: NodeJS.ProcessEnv = process.env): GuardC
     timeZone: env.SEND_TIMEZONE ?? DEFAULT_GUARD_CONFIG.timeZone,
     maxBounceRate: num(env.MAX_BOUNCE_RATE, DEFAULT_GUARD_CONFIG.maxBounceRate),
     maxRemovalsPerDay: num(env.MAX_REMOVALS_PER_DAY, DEFAULT_GUARD_CONFIG.maxRemovalsPerDay),
+    warmupStart: env.WARMUP_START || undefined,
+    warmupStartLimit: num(env.WARMUP_START_LIMIT, DEFAULT_GUARD_CONFIG.warmupStartLimit),
+    warmupStep: num(env.WARMUP_STEP, DEFAULT_GUARD_CONFIG.warmupStep),
   };
 }
